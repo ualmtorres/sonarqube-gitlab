@@ -1,0 +1,202 @@
+////
+NO CAMBIAR!!
+Codificación, idioma, tabla de contenidos, tipo de documento
+////
+:encoding: utf-8
+:lang: es
+:toc: right
+:toc-title: Tabla de contenidos
+:doctype: book
+:imagesdir: ./images
+:linkattrs:
+:toclevels: 4
+////
+Nombre y título del trabajo
+////
+# Análisis de la calidad del código con SonarQube en un proyecto GitLab
+Servicio de las Tecnologías de la Información y las Comunicaciones - Universidad de Almería
+
+image::logocloudstic.png[]
+
+// NO CAMBIAR!! (Entrar en modo no numerado de apartados)
+:numbered!: 
+
+
+[abstract]
+== Resumen
+////
+COLOCA A CONTINUACION EL RESUMEN
+////
+To Do
+
+////
+COLOCA A CONTINUACION LOS OBJETIVOS
+////
+.Objetivos
+* Bla bla bla
+
+[TIP]
+====
+Disponibles los repositorios usados en este tutorial.
+
+* Bla bla bla
+====
+
+// Entrar en modo numerado de apartados
+:numbered:
+
+## Introducción
+
+To Do
+
+## Preparación del entorno
+
+Partimos de SonarQube instalado y conectado a nuestro GitLab del proyecto en GitLab
+
+Desde la página de inicio de SonarQube creamos un nuevo proyecto y elegimos que sea de tipo GitLab. En el cuadro de búsqueda introducimos el nombre del proyecto de GitLab o una parte de él para que pueda ser localizado. Una vez localizado pulsaremos el botón `Setup`.
+
+image::EligiendoProyecto.png[]
+
+A continuación seleccionamos que queremos conectarlo con GitLab CI para que cada vez que se actualice el repositorio, se trasladen los datos a SonarQube. Ahí podremos ver si se han introducido _code smells_ o el estado de la cobertura.
+
+image::ConectarConGitLabCI.png[]
+
+Aparece un asistente en el que tenemos que configurar nuestro proyecto GitLab para que quede conectado con el proyecto de SonarQube
+
+En el primer paso vamos a generar la clave del proyecto. Indicamos qué tipo de tecnología utiliza. En nuestro caso, se trata de una API en NestJS y seleccionaremos la opción `Other (for JS, TS, Go, Python, PHP, ...`. Al pulsar el botón nos aparecerá un código como el siguiente para que lo incluyamos en un archivo `sonar-project.properties` en nuestro proyecto, es decir, en nuestra API NestJS. Este archivo se crea en la raíz del proyecto.
+
+[source, code]
+----
+sonar.projectKey=mtorres_nestjs-espacios_AX-y5m05X6pVU2o-QalE <1>
+sonar.qualitygate.wait=true
+----
+<1> La `projectKey` es diferente y única para este proyecto
+
+Para que el podamos explotar los resultados del testing del proyecto de la API NestJS en SonarQube, añadiremos también unas líneas al final del archivo `sonar-project.properties`
+
+Archivo `sonar-project.properties`
+[source, code]
+----
+sonar.projectKey=mtorres_nestjs-espacios_AX-y5m05X6pVU2o-QalE <1>
+sonar.qualitygate.wait=true
+sonar.test.inclusions=**/*.spec.ts,test/*.ts <2>
+sonar.testExecutionReportPaths=test-report.xml <3>
+sonar.javascript.lcov.reportPaths=coverage/lcov.info <4>
+----
+<1> La `projectKey` es diferente y única para este proyecto
+<2> Expresión regular para indicar dónde se encuentran los archivos de testing
+<3> Nombre del archivo de resultados del testing
+<4> Nombre y ruta relativa del archivo de cobertura de Jest
+
+En el siguiente paso del asistente de configuración de la integración con GitLab CI tenemos que añadir dos variables de entorno a GitLab. En GitLab seleccionamos `Settings | CI/CD | Variables`
+
+* Definimos una variable denominada `SONAR_HOST_URL` con la URL de SonarQube. En nuestro caso `https://sonar.stic.ual.es`. Dejamos marcada sólo la casilla de verificación `Mask variable`.
+* Definimos una variable denominada `SONAR_TOKEN` con el valor que nos ofrece en asistente al pulsar `Generate a token`. En nuestro caso `https://sonar.stic.ual.es`. Dejamos marcada sólo la casilla de verificación `Mask variable`.
+
+
+image::VariablesEnSonar.png[]
+
+Al pulsar el botón `Generate a token` aparece un cuadro de diálogo para generarl el token. Nos pide que introduzcamos un nombre para poder localizarlo. Dejaremos el que aparezca por defecto.
+
+image::GenerarToken.png[]
+
+Aparecerá el token para que podamos copiarlo al portapaleles. Lo copiamos y lo pegamos en la definición de variable `SONAR_TOKEN` que teníamos pendiente en GitLab. Dejamos marcada sólo la casilla de verificación `Mask variable`.
+
+Tras esto, la definición de variables del proyecto GitLab será algo así.
+
+image::VariablesEnGitLab.png[]
+
+El tercer paso del asistente de SonarQube nos ofrece el contenido de un archivo .`.gitlab-ci.yml`. No lo utilizaremos porque necesitamos introducir unos cambios para poder aprovechar los resultados del testing. El archivo `.gitlab-ci.yml` que incluiremos en nuestro proyecto de API en NestJS será el siguiente.
+
+Archivo `.gitlab-ci.yml`
+[source, yml]
+----
+include:
+- template: Auto-DevOps.gitlab-ci.yml
+
+sonarqube-check:
+  stage: test
+  image: 
+    name: harbor.stic.ual.es/desarrollo/sonar-scanner-cli:latest <1>
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script: 
+    - npm install <2>
+    - npm test -- --coverage --testResultsProcessor=jest-sonar-reporter <3>
+    - sonar-scanner
+  allow_failure: true
+  only:
+    - master # or the name of your main branch
+----
+<1> Imagen del scanner de Sonar. Para instalaciones de SonarQube on-premise se necesita una imagen propia que incluya el certificado CA de la instalación de SonarQube.
+<2> Instalación de las dependencias
+<3> Ejecucion de los tests incluyendo cobertura usando como reporter `jest-sonar-reporter`
+
+Ahora, en cada actualización del repositorio, se ejecutarán los tests, Sonar hará su trabajo y lo publicará en el proyecto de SonarQube. 
+
+## Análisis de la calidad del código
+
+Haremos commit y push a nuestro repositorio de GitLab. Esto desencadenará la ejecución del pipeline definido en el archivo `.gitlab-ci.yml`. Tras unos minutos, el proyecto SonarQube quedará actualizado y mostrará algo similar al de la figura siguiente.
+
+image::SonarQubePrimerInforme.png[]
+
+En este informe se indican varias cuestiones, como que la cobertura de tests de todo el proyecto es del 38%, que hay 13 _code smells_ que habría que arreglar y que estima que se tardarían unos 15 minutos.
+
+Si ahora hacemo clic sobre los minutos de la deuda técnica nos mostrará un listado de los archivos a modificar incluyendo una estimación del tiempo de modificación de cada uno.
+
+image::DeudaTecnica.png[]
+
+Si accedemos a uno de ellos, por ejemplo a `src/espacios/espacio.service.ts` veremos marcadas las líneas que hay modificar. 
+
+image::ProblemasEnServicioEspacio.png[]
+
+Si pulsamos sobre una de las caras nos indicará cómo solucionarlo. En este caso basta con retirar el `await` del `return` porque no es necesario.
+
+image::MostrandoCodeSmell.png[]
+
+Si pulsamos sobre el enlace `Why is this an issue?` nos dará información detallada sobre este _code smell_ y sobre cómo solucionarlo.
+
+image::PorqueEsUnProblema.png[]
+
+## Mejorando los indicadores
+
+Con poco esfuerzo veremos cómo mejorar los indicadores que aparecen en la pestaña `Overall Code` de la página de inicio.
+
+El primero será corregir la parte de `Security Hotspots`. Si pulsamos sobre el enlace que hay en el número de problemas de seguridad que tenemos, nos informa que hay un riesgo potencial al estar usando la función `Math.random`, que es un problema cuando queremos que los valores aleatorios generados no sean predecibles. 
+
+image::SecurityHotspot.png[]
+
+Esto no es un problema en nuestro caso y no estamos en riesgo. Desplegaremos el botón `Change status` y seleccionaremos `Safe` indicando que esto no es un problema para nosotros.
+
+image::ArreglandoSecurityHotspot.png[]
+
+Tras acecptarlo, la pantalla de `Security Hotspots` informa que todo está correcto.
+
+image::SinHotspotSecurity.png[]
+
+Ahora, la página de inicio indica que ya no hay riesgos de seguridad y que están resueltos el 100% de los problemas.
+
+image::SecurityHotspotMejorada.png[]
+
+A continuación, corregiremos los _code smells_ eliminando los `await` innecesarios en los `return` de las funciones `async`, y eliminando también los `import` innecesarios. Tras hacer dichos cambios, pasaremos los tests en local para comprobar que todo sigue funcionando correctamente tras esos cambios, haremos `commit` y `push` a GitLab. Tras unos minutos, veremos los cambios reflejados en Sonar. La figura siguiente muestra el efecto de las modificaciones en la pestaña `Overall Code` mostrando que han desaparecido los _code smells_. Sin embargo, el estado de la calidad aparece en rojo en el cuadro de la izquierda. Esto se debe a que tenemos configurada como condición necesaria para pasar el control de calidad que la cobertura no sea inferior al 80% y actualmente está al 36.36%.
+
+image::NoEstaParaProduccion.png[]
+
+No obstante, la parte inferior de la página muestra un gráfico muy interesante. Si seleccionamos `issues` en el desplegable del gráfico vemos que los _code smells_ se han reducido a 0.
+
+image::BajadaCodeSmells.png[]
+
+Lo siguiente sería añadir nuevos tests para mejorar la cobertura y poder pasar el control de calidad que indique que podemos pasar a producción.
+
+Si volvemos a la página de inicio de SonarQube, 
+
+:numbered!: 
+
+## Anexo I. To Do
+
