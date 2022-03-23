@@ -27,19 +27,26 @@ image::logocloudstic.png[]
 ////
 COLOCA A CONTINUACION EL RESUMEN
 ////
-To Do
+https://docs.sonarqube.org/latest/[SonarQube] es una herramienta de revisión de código para la detección de fallos, vulnerabilidades y _code smells_. Se puede integrar con herramientas de CI para incluir el proceso de inspección en los pipelines de CI. En este tutorial veremos cómo integrar SonarQube con GitLab. Lo haremos configurando un proyecto en SonarQube que actúe como destino del reporting de testing de cobertura realizado en GitLab tras una actualización del repositorio. Además veremos cómo solucionar problemas asociados a posibles vulnerabilidades y cómo corregir _code smells_.
 
 ////
 COLOCA A CONTINUACION LOS OBJETIVOS
 ////
 .Objetivos
-* Bla bla bla
+* Configurar un proyecto GitLab para publicar los resultados de cobertura en SonarQube.
+* Introducir los principales tipos de análisis que realiza SonarQube.
+* Ver el efecto de las correcciones propuestas por SonarQube en los indicadores de calidad del proyecto.
 
 [TIP]
 ====
-Disponibles los repositorios usados en este tutorial.
+Disponible el https://github.com/ualmtorres/nestjs-espacios/releases/tag/v0.0.1[repositorio] usado en este tutorial.
 
-* Bla bla bla
+Clonar con 
+
+[source, bash]
+----
+$ git clone --depth 1 --branch v0.0.1 https://github.com/ualmtorres/nestjs-espacios
+----
 ====
 
 // Entrar en modo numerado de apartados
@@ -47,7 +54,16 @@ Disponibles los repositorios usados en este tutorial.
 
 ## Introducción
 
-To Do
+La puesta en producción de cualquier software es un proceso no exento de riesgos y preocupaciones. No obstante, es posible no hacer del proceso de puesta en producción un ejercicio de insensatez que nos deje expuestos a problemas. Una solución aceptada es la introducción de una etapa de testing en el proceso de integración continua. Pero, ¿basta con el testing? ¿No deberíamos pensar en otros indicadores de calidad? Una posible solución a esto es la introducción de un proceso de inspección del código que someta el código a un proceso de revisión.
+
+https://docs.sonarqube.org/latest/[SonarQube] es una herramienta de inspección de código que permite, entre otros, analizar si el nuevo código incorpora tests (independientemente de los tests del código anterior), si hay fragmentos de código repetidos, la presencia de _code smells_ y detectar la posible existencia de vulnerabilidades.
+
+En este tutorial veremos cómo integrar GitLab con SonarQube para incorporar el proceso de análisis de código en la integración continua. Lo haremos a través de un caso de uso de una API desarrollada en NestJS. La usaremos como escenario para realizar un análisis previo de su calidad, introducir una serie de mejoras recomendadas en el código y ver su impacto en la mejora de la calidad, así como las recomendaciones de SonarQube para indicar si está preparada para salir o no a producción.
+
+[NOTE]
+====
+La API de ejemplo que usamos en este tutorial usa https://www.npmjs.com/package/jest-sonar-reporter[`jest-sonar-reporter`], un procesador de resultados de testing que convierte la salida del testing de Jest al formato que usa Sonar.
+====
 
 ## Preparación del entorno
 
@@ -61,16 +77,23 @@ A continuación seleccionamos que queremos conectarlo con GitLab CI para que cad
 
 image::ConectarConGitLabCI.png[]
 
-Aparece un asistente en el que tenemos que configurar nuestro proyecto GitLab para que quede conectado con el proyecto de SonarQube
+Aparece un asistente en el que tenemos que configurar nuestro proyecto GitLab para que quede conectado con el proyecto de SonarQube.
 
-En el primer paso vamos a generar la clave del proyecto. Indicamos qué tipo de tecnología utiliza. En nuestro caso, se trata de una API en NestJS y seleccionaremos la opción `Other (for JS, TS, Go, Python, PHP, ...`. Al pulsar el botón nos aparecerá un código como el siguiente para que lo incluyamos en un archivo `sonar-project.properties` en nuestro proyecto, es decir, en nuestra API NestJS. Este archivo se crea en la raíz del proyecto.
+En el primer paso vamos a generar la clave del proyecto. Indicamos el tipo de tecnología que utiliza. En nuestro caso, como se trata de una API en NestJS, seleccionaremos la opción `Other (for JS, TS, Go, Python, PHP, ...`. Al pulsar el botón nos aparecerá un código como el siguiente para que lo incluyamos en un archivo `sonar-project.properties` en nuestro proyecto, es decir, en nuestra API NestJS. Este archivo se crea en la raíz del proyecto.
 
 [source, code]
 ----
 sonar.projectKey=mtorres_nestjs-espacios_AX-y5m05X6pVU2o-QalE <1>
-sonar.qualitygate.wait=true
+sonar.qualitygate.wait=true <2>
 ----
-<1> La `projectKey` es diferente y única para este proyecto
+<1> La `projectKey` es única para cada proyecto
+<2> Indica a GitLab que espere a la finalización del análisis para determinar si el proyecto supera esta etapa en el pipeline de acuerdo a la calidad exigida del proyecto (Ver _Quality Gate_ en la sección <<Mejorando los indicadores>>).
+
+[NOTE]
+====
+Los _Quality Gates_ permiten definir los mínimos que debe cumplir el proyecto en base a unas métricas de calidad (p.e. _code smells_, cobertura, código duplicado, ...). Esto es muy útil si se integra SonarQube en el pipeline de CI/CD. Es precisamente lo que hace `sonar.qualitygate.wait=true`.
+====
+
 
 Para que el podamos explotar los resultados del testing del proyecto de la API NestJS en SonarQube, añadiremos también unas líneas al final del archivo `sonar-project.properties`
 
@@ -83,7 +106,7 @@ sonar.test.inclusions=**/*.spec.ts,test/*.ts <2>
 sonar.testExecutionReportPaths=test-report.xml <3>
 sonar.javascript.lcov.reportPaths=coverage/lcov.info <4>
 ----
-<1> La `projectKey` es diferente y única para este proyecto
+<1> La `projectKey` es única
 <2> Expresión regular para indicar dónde se encuentran los archivos de testing
 <3> Nombre del archivo de resultados del testing
 <4> Nombre y ruta relativa del archivo de cobertura de Jest
@@ -106,7 +129,7 @@ Tras esto, la definición de variables del proyecto GitLab será algo así.
 
 image::VariablesEnGitLab.png[]
 
-El tercer paso del asistente de SonarQube nos ofrece el contenido de un archivo .`.gitlab-ci.yml`. No lo utilizaremos porque necesitamos introducir unos cambios para poder aprovechar los resultados del testing. El archivo `.gitlab-ci.yml` que incluiremos en nuestro proyecto de API en NestJS será el siguiente.
+El tercer paso del asistente de SonarQube nos ofrece el contenido de un archivo .`.gitlab-ci.yml` de muestra. No lo utilizaremos porque necesitamos introducir unos cambios para poder aprovechar los resultados del testing. El archivo `.gitlab-ci.yml` que incluiremos en nuestro proyecto de API en NestJS será el siguiente.
 
 Archivo `.gitlab-ci.yml`
 [source, yml]
@@ -148,7 +171,7 @@ image::SonarQubePrimerInforme.png[]
 
 En este informe se indican varias cuestiones, como que la cobertura de tests de todo el proyecto es del 38%, que hay 13 _code smells_ que habría que arreglar y que estima que se tardarían unos 15 minutos.
 
-Si ahora hacemo clic sobre los minutos de la deuda técnica nos mostrará un listado de los archivos a modificar incluyendo una estimación del tiempo de modificación de cada uno.
+Si ahora hacemos clic sobre los minutos de la deuda técnica nos mostrará un listado de los archivos a modificar incluyendo una estimación del tiempo de modificación de cada uno.
 
 image::DeudaTecnica.png[]
 
@@ -172,7 +195,7 @@ El primero será corregir la parte de `Security Hotspots`. Si pulsamos sobre el 
 
 image::SecurityHotspot.png[]
 
-Esto no es un problema en nuestro caso y no estamos en riesgo. Desplegaremos el botón `Change status` y seleccionaremos `Safe` indicando que esto no es un problema para nosotros.
+Esto no es un problema en nuestro caso y por tanto no estamos en riesgo. Desplegaremos el botón `Change status` y seleccionaremos `Safe` indicando que esto no es un problema para nosotros.
 
 image::ArreglandoSecurityHotspot.png[]
 
@@ -184,9 +207,18 @@ Ahora, la página de inicio indica que ya no hay riesgos de seguridad y que est�
 
 image::SecurityHotspotMejorada.png[]
 
-A continuación, corregiremos los _code smells_ eliminando los `await` innecesarios en los `return` de las funciones `async`, y eliminando también los `import` innecesarios. Tras hacer dichos cambios, pasaremos los tests en local para comprobar que todo sigue funcionando correctamente tras esos cambios, haremos `commit` y `push` a GitLab. Tras unos minutos, veremos los cambios reflejados en Sonar. La figura siguiente muestra el efecto de las modificaciones en la pestaña `Overall Code` mostrando que han desaparecido los _code smells_. Sin embargo, el estado de la calidad aparece en rojo en el cuadro de la izquierda. Esto se debe a que tenemos configurada como condición necesaria para pasar el control de calidad que la cobertura no sea inferior al 80% y actualmente está al 36.36%.
+A continuación, corregiremos los _code smells_ eliminando los `await` innecesarios en los `return` de las funciones `async`, y eliminando también los `import` innecesarios. Tras hacer dichos cambios, pasaremos los tests en local para comprobar que todo sigue funcionando correctamente tras esos cambios, y haremos `commit` y `push` a GitLab. Tras unos minutos, veremos los cambios reflejados en Sonar. La figura siguiente muestra el efecto de las modificaciones en la pestaña `Overall Code` mostrando que han desaparecido los _code smells_. Sin embargo, el estado de la calidad aparece en rojo en el cuadro de la izquierda. Esto se debe a que tenemos configurada como condición necesaria para pasar el control de calidad que la cobertura no sea inferior al 80% y actualmente está al 36.36%.
 
 image::NoEstaParaProduccion.png[]
+
+.Quality Gate
+****
+Cada proyecto tiene asociado unos indicadores de calidad mínimos orientados a indicar si está para pasar a producción o no. Este conjunto de indicadores es lo que se conoce como _Quality Gate_. Es posible crear _quality gates_ personalizados para cada proyecto. De no hacerlo, se usará el predeterminado.
+
+Estas configuraciones de indicadores de calidad están disponibles en el menú `Quality Gate`. Como muestra la figura siguiente, se trata de definir los mínimos de cobertura, líneas duplicadas, indicadores de fiabilidad y demás.
+
+image::QualityGates.png[]
+****
 
 No obstante, la parte inferior de la página muestra un gráfico muy interesante. Si seleccionamos `issues` en el desplegable del gráfico vemos que los _code smells_ se han reducido a 0.
 
@@ -194,9 +226,126 @@ image::BajadaCodeSmells.png[]
 
 Lo siguiente sería añadir nuevos tests para mejorar la cobertura y poder pasar el control de calidad que indique que podemos pasar a producción.
 
-Si volvemos a la página de inicio de SonarQube, 
+## Uso local de Sonar Scanner CLI
+
+El proceso de análisis de la calidad es realizado mediante el componente Sonar Scanner. De hecho, es uno de los scripts que tenemos configurado en nuestro archivo `.gitlab-ci.yml`. Sin embargo, también puede ser útil realizar análisis de calidad locales independientemente de los que se realicen de forma automática al actualizar el repositorio GitLab. Sonar Scanner se puede descargar en forma de binario o se puede descargar como una imagen Docker. En ambos casos habrá que configurar el certificado de CA si usamos uno propio, como es nuestro caso, que tenemos SonarQube on-premise.
+
+### Preparación de la imagen Docker personalizada de Sonar Scanner
+
+El certificado de CA de nuestro servidor SonarQube se obtiene con el comando siguiente:
+
+[source, bash]
+----
+$ openssl s_client -showcerts -connect <your-sonarqube-server> </dev/null 2>/dev/null|openssl x509 -outform PEM <1>
+----
+<1> Cambiar `<your-sonarqube-server>` por el nombre DNS o IP del servidor SonarQube incluyendo el puerto
+
+Esto nos devolverá el certificado de CA de nuestro SonarQube.
+
+[source, code]
+----
+-----BEGIN CERTIFICATE-----
+MIIDcDCCAligAwIBAgIRAJPe5jg8uZvONAsLm8IH9/kwDQYJKoZIhvcNAQELBQAw
+SzEQMA4GA1UEChMHQWNtZSBDbzE3MDUGA1UEAxMuS3ViZXJuZXRlcyBJbmdyZXNz
+...
+U8cOzq6MoaEzyZZ48J/79QEA5O08wo2JPWYGrt6FxeKjPcY054DeTq86YPHXWrKz
+puoW1jzFCeLu+ajLy5pFzJ0/8po=
+-----END CERTIFICATE-----
+----
+
+Este valor lo necesitamos para incluirlo en la lista de claves que maneja la imagen personalizada de Sonar Scanner que trabaje contra nuestro SonarQube.
+
+A continuación se muestra el `Dockerfile` que genera nuestra imagen personalizada:
+
+[source, Dockerfile]
+----
+FROM sonarsource/sonar-scanner-cli:latest <1>
+
+RUN apk add openssl
+
+RUN openssl s_client -showcerts -connect sonar.stic.ual.es:443 </dev/null 2>/dev/null|openssl x509 -outform PEM >mycertfile.pem <2>
+
+RUN cp /etc/ssl/certs/java/cacerts cacerts
+
+RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias mycert -file mycertfile.pem
+
+RUN cp cacerts /etc/ssl/certs/java/cacerts
+----
+<1> Obtención de la imagen oficial del scanner
+<2> Recuperación de la clave de CA de nuestro SonarQube y almacenarla en `mycertfile.pem`
+
+Los últimos comandos añaden el certificado al almacén de claves del scanner.
+
+A continuación crearemos la imagen a partir de ese `Dockerfile`
+
+`docker build --tag our-custom/sonar-scanner-cli .`
+
+Esto creará la imagen personalizada de Sonar Scanner con la clave de CA de nuestro SonarQube. Puedes subir esta imagen a un registro remoto de imágenes como Docker Hub o Harbor.
+
+### Análisis de código del proyecto desde Sonar Scanner
+
+Partiendo de la imagen Docker creada de Sonar Scanner, crearemos un contenedor y entraremos dentro de él en una sesión interactiva.
+
+[source, bash]
+----
+$ docker run -ti our-custom/sonar-scanner-cli bash <1>
+----
+<1> Usar la imagen del repositorio remoto o de un registro Docker (Docker Hub, Harbor, ...)
+
+[NOTE]
+====
+En UAL STIC tenemos una imagen Docker de Scanner Sonar personalizada con nuestro certificado de CA. La imagen está disponible en 
+
+  harbor.stic.ual.es/desarrollo/sonar-scanner-cli:latest
+
+Para descargarla, previamente tendrás que iniciar sesión con `docker login harbor.stic.ual.es`
+====
+
+Una vez dentro del contenedor de Sonar Scanner, se trata de descargar el repositorio de código que queremos analizar con Sonar, configurar las variables de Sonar, instalar las dependencias, ejecutar los tests con el reporter para Sonar y terminar con el scanner. Esto terminará con un informe de si pasa o no la _Quality Gate_. A continuación se muestra la lista de comandos
+
+[source, bash]
+----
+$ git clone https://gitlab.ual.es/mtorres/nestjs-espacios.git
+$ cd nestjs-espacios/
+$ export SONAR_HOST_URL=https://sonar.stic.ual.es
+$ export SONAR_TOKEN=<your-sonar-token> <1>
+$ npm install
+$ npm test -- --coverage --testResultsProcessor=jest-sonar-reporter <2>
+$ sonar-scanner <3>
+----
+<1> Token generado por Sonar para el proyecto
+<2> Ejecución de la cobertura de tests con resultados en formato Sonar
+<3> Análisis del código
+
+Al final tendremos algo así indicando si pasa o no la calidad exigida.
+
+[source, code]
+----
+...
+INFO: ------------- Check Quality Gate status
+INFO: Waiting for the analysis report to be processed (max 300s)
+xINFO: QUALITY GATE STATUS: PASSED - View details on https://sonar.stic.ual.es/dashboard?id=mtorres_nestjs-espacios_AX-y5m05X6pVU2o-QalE <1>
+INFO: Analysis total time: 45.080 s
+INFO: ------------------------------------------------------------------------
+INFO: EXECUTION SUCCESS
+INFO: ------------------------------------------------------------------------
+INFO: Total time: 49.088s
+INFO: Final Memory: 15M/54M
+INFO: ------------------------------------------------------------------------
+----
+<1> En este caso, la exigencia de calidad ha sido superada y el proyecto podría pasar a producción
+
+## Referencias
+
+* https://docs.sonarqube.org/latest/analysis/gitlab-integration/[Documentación de SonarQube sobre Integración con GitLab]
+* https://docs.sonarqube.org/latest/[Documentación de SonarQube]
 
 :numbered!: 
 
-## Anexo I. To Do
+## Anexo I. Plugin SonarLint
 
+https://www.sonarlint.org[SonarLint] es un plugin disponible para la mayoría de los IDEs que ayuda a identificar posibles problemas de calidad y seguridad en el código. Permite entonces que nos adelantemos y corrijamos el código conforme lo vayamos escribiendo. Por ejemplo, nos informará de _code smells_ detectados y ofreciéndonos una posible solución. También aporta información con la explicación del problema.
+
+A continuación se muestra una figura en la que SonarLint informa que debemos eliminar el `await` del `return` ya que una función asíncrona envuelve la respuesta en una promesa y hace innecesario el uso de ese `await`.
+
+image::SonarLint.png[]
