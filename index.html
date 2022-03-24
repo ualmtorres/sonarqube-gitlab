@@ -1050,10 +1050,18 @@ INFO: ------------------------------------------------------------------------</
 </div>
 </div>
 <div class="paragraph">
-<p>Vista la utilidad de SonarLint cabría preguntarse si podría sustituir a SonarQube pensando en que podríamos prescindir de un lugar común y centralizado donde se vuelque el resultado del análisis del código ya que puede resolverse totalmente en local. Además, exige ir a SonarQube, ver los errores y corregirlos en local.</p>
+<p>Vista entonces la utilidad de SonarLint, cabría preguntarse si podría sustituir a SonarQube pensando en que podríamos prescindir de ese lugar común y centralizado donde se vuelcan los resultados del análisis del código, ya que parece que puede resolverse totalmente en local. Además, exige ir a SonarQube, ver los errores y corregirlos en local.</p>
 </div>
 <div class="paragraph">
-<p>La respuesta es que no, que SonarLint no sustituye ni a SonarQube ni a la etapa que realiza Sonar Scanner en el proceso de CI que hace GitLab. Un error de configuración en un equipo de desarrollo local, miembros del equipo de desarrollo que no realizan las correcciones sugeridas por SonarLint por descuido o porque tienen alterado el conjunto de reglas de análisis, un entorno de desarrollo mal configurado o sin configurar y otras situaciones podrían provocar la subida de código al repositorio que podría derivar en una puesta en producción de una versión sin revisar y con errores que podrían haber sido detectados por Sonar en el proceso de building, no habrían activado la <em>Quality Gate</em> y en definitiva no habrían dejado poner ese código en producción.</p>
+<p>La respuesta es que <strong>no, que SonarLint no sustituye ni a SonarQube ni a la etapa que realiza Sonar Scanner en el proceso de CI que hace GitLab</strong>. Un error de configuración de SonarLint en un equipo de desarrollo local, miembros del equipo de desarrollo que no realicen las correcciones sugeridas por SonarLint por descuido o porque tienen alterado el conjunto de reglas de análisis, un entorno de desarrollo mal configurado o sin configurar, y otras situaciones similares podrían provocar la subida de <em>mal</em> código al repositorio, que podría derivar en una puesta en producción de una versión sin revisar y con errores. En cambio, si Sonar hubiese estado dentro del proceso de building del CI, habría detectado los posibles problemas de calidad, habría desactivado la <em>Quality Gate</em> para esa versión y en definitiva habría impedido poner ese código en producción. Por tanto, independientemente de lo que haga o tenga cada desarrollador en su equipo, el proceso de análisis realizado por Sonar en el proceso de building es imprescindible.</p>
+</div>
+<div class="paragraph">
+<p>A continuación se muestra una figura del ecosistema completo propuesto por Sonar en el que conviven SonarLint en el equipo de desarrollo, Sonar Scanner en el proceso de CI y SonarQube como plataforma de recopilación y publicación de métricas de los proyectos.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/ecosistema.png" alt="ecosistema">
+</div>
 </div>
 </div>
 </div>
@@ -1075,7 +1083,7 @@ INFO: ------------------------------------------------------------------------</
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-03-24 08:46:17 +0100
+Last updated 2022-03-24 13:59:17 +0100
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/github.min.css">
