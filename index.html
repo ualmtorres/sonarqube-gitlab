@@ -457,8 +457,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#trueanálisis-de-código-del-proyecto-desde-sonar-scanner">5.2. Análisis de código del proyecto desde Sonar Scanner</a></li>
 </ul>
 </li>
-<li><a href="#truereferencias">6. Referencias</a></li>
-<li><a href="#trueanexo-i-plugin-sonarlint">Anexo I. Plugin SonarLint</a></li>
+<li><a href="#trueel-ecosistema-ideal">6. El ecosistema ideal</a></li>
+<li><a href="#truereferencias">7. Referencias</a></li>
 </ul>
 </div>
 </div>
@@ -1036,7 +1036,29 @@ INFO: ------------------------------------------------------------------------</
 </div>
 </div>
 <div class="sect1">
-<h2 id="truereferencias"><a class="anchor" href="#truereferencias"></a>6. Referencias</h2>
+<h2 id="trueel-ecosistema-ideal"><a class="anchor" href="#trueel-ecosistema-ideal"></a>6. El ecosistema ideal</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="https://www.sonarlint.org">SonarLint</a> es un plugin disponible para la mayoría de los IDEs que ayuda a identificar posibles problemas de calidad y seguridad en el código. Permite entonces que nos adelantemos y corrijamos el código conforme lo vayamos escribiendo. Por ejemplo, nos informará de <em>code smells</em> detectados y ofreciéndonos una posible solución. También aporta información con la explicación del problema.</p>
+</div>
+<div class="paragraph">
+<p>A continuación se muestra una figura en la que SonarLint informa que debemos eliminar el <code>await</code> del <code>return</code> ya que una función asíncrona envuelve la respuesta en una promesa y hace innecesario el uso de ese <code>await</code>.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/SonarLint.png" alt="SonarLint">
+</div>
+</div>
+<div class="paragraph">
+<p>Vista la utilidad de SonarLint cabría preguntarse si podría sustituir a SonarQube pensando en que podríamos prescindir de un lugar común y centralizado donde se vuelque el resultado del análisis del código ya que puede resolverse totalmente en local. Además, exige ir a SonarQube, ver los errores y corregirlos en local.</p>
+</div>
+<div class="paragraph">
+<p>La respuesta es que no, que SonarLint no sustituye ni a SonarQube ni a la etapa que realiza Sonar Scanner en el proceso de CI que hace GitLab. Un error de configuración en un equipo de desarrollo local, miembros del equipo de desarrollo que no realizan las correcciones sugeridas por SonarLint por descuido o porque tienen alterado el conjunto de reglas de análisis, un entorno de desarrollo mal configurado o sin configurar y otras situaciones podrían provocar la subida de código al repositorio que podría derivar en una puesta en producción de una versión sin revisar y con errores que podrían haber sido detectados por Sonar en el proceso de building, no habrían activado la <em>Quality Gate</em> y en definitiva no habrían dejado poner ese código en producción.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="truereferencias"><a class="anchor" href="#truereferencias"></a>7. Referencias</h2>
 <div class="sectionbody">
 <div class="ulist">
 <ul>
@@ -1050,26 +1072,10 @@ INFO: ------------------------------------------------------------------------</
 </div>
 </div>
 </div>
-<div class="sect1">
-<h2 id="trueanexo-i-plugin-sonarlint"><a class="anchor" href="#trueanexo-i-plugin-sonarlint"></a>Anexo I. Plugin SonarLint</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p><a href="https://www.sonarlint.org">SonarLint</a> es un plugin disponible para la mayoría de los IDEs que ayuda a identificar posibles problemas de calidad y seguridad en el código. Permite entonces que nos adelantemos y corrijamos el código conforme lo vayamos escribiendo. Por ejemplo, nos informará de <em>code smells</em> detectados y ofreciéndonos una posible solución. También aporta información con la explicación del problema.</p>
-</div>
-<div class="paragraph">
-<p>A continuación se muestra una figura en la que SonarLint informa que debemos eliminar el <code>await</code> del <code>return</code> ya que una función asíncrona envuelve la respuesta en una promesa y hace innecesario el uso de ese <code>await</code>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="./images/SonarLint.png" alt="SonarLint">
-</div>
-</div>
-</div>
-</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-03-23 23:56:26 +0100
+Last updated 2022-03-24 08:46:17 +0100
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/github.min.css">

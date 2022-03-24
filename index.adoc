@@ -335,17 +335,21 @@ INFO: ------------------------------------------------------------------------
 ----
 <1> En este caso, la exigencia de calidad ha sido superada y el proyecto podría pasar a producción
 
-## Referencias
-
-* https://docs.sonarqube.org/latest/analysis/gitlab-integration/[Documentación de SonarQube sobre Integración con GitLab]
-* https://docs.sonarqube.org/latest/[Documentación de SonarQube]
-
-:numbered!: 
-
-## Anexo I. Plugin SonarLint
+## El ecosistema ideal
 
 https://www.sonarlint.org[SonarLint] es un plugin disponible para la mayoría de los IDEs que ayuda a identificar posibles problemas de calidad y seguridad en el código. Permite entonces que nos adelantemos y corrijamos el código conforme lo vayamos escribiendo. Por ejemplo, nos informará de _code smells_ detectados y ofreciéndonos una posible solución. También aporta información con la explicación del problema.
 
 A continuación se muestra una figura en la que SonarLint informa que debemos eliminar el `await` del `return` ya que una función asíncrona envuelve la respuesta en una promesa y hace innecesario el uso de ese `await`.
 
 image::SonarLint.png[]
+
+Vista la utilidad de SonarLint cabría preguntarse si podría sustituir a SonarQube pensando en que podríamos prescindir de un lugar común y centralizado donde se vuelque el resultado del análisis del código ya que puede resolverse totalmente en local. Además, exige ir a SonarQube, ver los errores y corregirlos en local.
+
+La respuesta es que no, que SonarLint no sustituye ni a SonarQube ni a la etapa que realiza Sonar Scanner en el proceso de CI que hace GitLab. Un error de configuración en un equipo de desarrollo local, miembros del equipo de desarrollo que no realizan las correcciones sugeridas por SonarLint por descuido o porque tienen alterado el conjunto de reglas de análisis, un entorno de desarrollo mal configurado o sin configurar y otras situaciones podrían provocar la subida de código al repositorio que podría derivar en una puesta en producción de una versión sin revisar y con errores que podrían haber sido detectados por Sonar en el proceso de building, no habrían activado la _Quality Gate_ y en definitiva no habrían dejado poner ese código en producción.
+
+## Referencias
+
+* https://docs.sonarqube.org/latest/analysis/gitlab-integration/[Documentación de SonarQube sobre Integración con GitLab]
+* https://docs.sonarqube.org/latest/[Documentación de SonarQube]
+
+
